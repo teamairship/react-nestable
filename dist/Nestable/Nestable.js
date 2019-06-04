@@ -56,6 +56,14 @@ var Nestable = function (_Component) {
 
     var _this = _possibleConstructorReturn(this, (Nestable.__proto__ || Object.getPrototypeOf(Nestable)).call(this, props));
 
+    _this.scrollUp = function () {
+      document.body.scrollTop -= 7;
+    };
+
+    _this.scrollDown = function () {
+      document.body.scrollTop += 6;
+    };
+
     _this.collapse = function (itemIds) {
       var _this$props = _this.props,
           childrenProp = _this$props.childrenProp,
@@ -248,7 +256,11 @@ var Nestable = function (_Component) {
       itemsOld: null, // snap copy in case of canceling drag
       dragItem: null,
       isDirty: false,
-      collapsedGroups: []
+      collapsedGroups: [],
+      scrollingUp: false,
+      scrollingDown: false,
+      scrollUpInterval: null,
+      scrollDownInterval: null
     };
 
     _this.el = null;
@@ -272,6 +284,24 @@ var Nestable = function (_Component) {
       items = (0, _utils.listWithChildren)(items, childrenProp);
 
       this.setState({ items: items });
+    }
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps, prevState) {
+      if (!prevState.scrollingUp && this.state.scrollingUp) {
+        var scrollUpInterval = setInterval(this.scrollUp, 20);
+        this.setState({ scrollUpInterval: scrollUpInterval });
+      } else if (!prevState.scrollingDown && this.state.scrollingDown) {
+        var scrollDownInterval = setInterval(this.scrollDown, 20);
+        this.setState({ scrollDownInterval: scrollDownInterval });
+      } else if (prevState.scrollingUp && !this.state.scrollingUp) {
+        clearInterval(this.state.scrollUpInterval);
+      } else if (prevState.scrollingDown && !this.state.scrollingDown) {
+        clearInterval(this.state.scrollDownInterval);
+      } else if (!this.state.dragItem) {
+        clearInterval(this.state.scrollUpInterval);
+        clearInterval(this.state.scrollDownInterval);
+      }
     }
   }, {
     key: 'componentWillReceiveProps',
@@ -619,6 +649,8 @@ var Nestable = function (_Component) {
   }, {
     key: 'render',
     value: function render() {
+      var _this3 = this;
+
       var _state2 = this.state,
           items = _state2.items,
           dragItem = _state2.dragItem;
@@ -628,7 +660,24 @@ var Nestable = function (_Component) {
 
       return _react2.default.createElement(
         'div',
-        { className: (0, _classnames2.default)("nestable", "nestable-" + group, { 'is-drag-active': dragItem }) },
+        {
+          className: (0, _classnames2.default)("nestable", "nestable-" + group, { 'is-drag-active': dragItem }),
+          onMouseMove: function onMouseMove(e) {
+            var positionY = e.nativeEvent.screenY;
+            var documentHeight = document.body.clientHeight;
+            if (dragItem) {
+              if (positionY < 250) {
+                _this3.setState({ scrollingUp: true });
+              } else if (positionY > documentHeight) {
+                _this3.setState({ scrollingDown: true });
+              } else {
+                _this3.setState({ scrollingUp: false, scrollingDown: false });
+              }
+            } else {
+              _this3.setState({ scrollingUp: false, scrollingDown: false });
+            }
+          }
+        },
         _react2.default.createElement(
           'ol',
           { className: 'nestable-list nestable-group' },

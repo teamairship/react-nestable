@@ -25,7 +25,11 @@ class Nestable extends Component {
       itemsOld: null, // snap copy in case of canceling drag
       dragItem: null,
       isDirty: false,
-      collapsedGroups: []
+      collapsedGroups: [],
+      scrollingUp: false,
+      scrollingDown: false,
+      scrollUpInterval: null,
+      scrollDownInterval: null
     };
 
     this.el = null;
@@ -75,6 +79,31 @@ class Nestable extends Component {
 
     this.setState({ items });
   }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (!prevState.scrollingUp && this.state.scrollingUp) {
+      const scrollUpInterval = setInterval(this.scrollUp, 20);
+      this.setState({ scrollUpInterval });
+    } else if (!prevState.scrollingDown && this.state.scrollingDown) {
+      const scrollDownInterval = setInterval(this.scrollDown, 20);
+      this.setState({ scrollDownInterval });
+    } else if (prevState.scrollingUp && !this.state.scrollingUp) {
+      clearInterval(this.state.scrollUpInterval);
+    } else if (prevState.scrollingDown && !this.state.scrollingDown) {
+      clearInterval(this.state.scrollDownInterval);
+    } else if (!this.state.dragItem) {
+      clearInterval(this.state.scrollUpInterval);
+      clearInterval(this.state.scrollDownInterval);
+    }
+  }
+
+  scrollUp = () => {
+    document.body.scrollTop -= 7;
+  };
+
+  scrollDown = () => {
+    document.body.scrollTop += 6;
+  };
 
   componentWillReceiveProps(nextProps) {
     const { items: itemsNew, childrenProp } = nextProps;
@@ -570,7 +599,24 @@ class Nestable extends Component {
     const options = this.getItemOptions();
 
     return (
-      <div className={cn("nestable", "nestable-" + group, { 'is-drag-active': dragItem })}>
+      <div
+        className={cn("nestable", "nestable-" + group, { 'is-drag-active': dragItem })}
+        onMouseMove={e => {
+          const positionY = e.nativeEvent.screenY;
+          const documentHeight = document.body.clientHeight;
+          if (dragItem) {
+            if (positionY < 250) {
+              this.setState({ scrollingUp: true });
+            } else if (positionY > documentHeight) {
+              this.setState({ scrollingDown: true });
+            } else {
+              this.setState({ scrollingUp: false, scrollingDown: false });
+            }
+          } else {
+            this.setState({ scrollingUp: false, scrollingDown: false });
+          }
+        }}
+      >
         <ol className="nestable-list nestable-group">
           {items.map((item, i) => {
             return (
